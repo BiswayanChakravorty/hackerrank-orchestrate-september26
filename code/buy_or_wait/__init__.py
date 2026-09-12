@@ -2,7 +2,8 @@
 
 from .load import DatasetLoader, DatasetValidationError, LoadedDataset
 from .cashflows import CashFlowNormalizer, CashFlowNormalizationError, ExchangeRateUnavailableError
-from .simulator import BaselineSimulation, BaselineSimulator
+from .simulator import BaselineAffordabilityCalculator, BaselineSimulation, BaselineSimulator
+from .models import BaselineAffordabilityResult
 from .amendments import AmendmentReport, EvidenceAmendmentEngine
 
-__all__ = ["AmendmentReport", "BaselineSimulation", "BaselineSimulator", "CashFlowNormalizer", "CashFlowNormalizationError", "DatasetLoader", "DatasetValidationError", "EvidenceAmendmentEngine", "ExchangeRateUnavailableError", "LoadedDataset"]
+__all__ = ["AmendmentReport", "BaselineAffordabilityCalculator", "BaselineAffordabilityResult", "BaselineSimulation", "BaselineSimulator", "CashFlowNormalizer", "CashFlowNormalizationError", "DatasetLoader", "DatasetValidationError", "EvidenceAmendmentEngine", "ExchangeRateUnavailableError", "LoadedDataset"]

@@ -134,3 +134,11 @@ class EvidenceAmendment:
     old_status: EventStatus | None
     new_status: EventStatus | None
     explanation: str
+
+
+@dataclass(frozen=True)
+class BaselineAffordabilityResult:
+    """Financial capacity before payment preferences or spending changes."""
+
+    amount_safe_to_pay: Decimal
+    earliest_date_for_full_payment: date | None
