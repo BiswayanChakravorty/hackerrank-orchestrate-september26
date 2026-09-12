@@ -9,7 +9,7 @@ from statistics import median
 
 from .load import ExchangeRate, LoadedDataset
 from .models import CashFlow, Event, MessageAmendment, Profile, Request
-from .amendments import EvidenceAmendmentEngine
+from .amendments import EvidenceAmendment, EvidenceAmendmentEngine
 
 
 class CashFlowNormalizationError(ValueError):
@@ -39,6 +39,10 @@ class CashFlowNormalizer:
         self.rates = {(rate.rate_date, rate.from_currency, rate.to_currency): rate.rate for rate in dataset.exchange_rates}
         self.events_by_id = {event.event_id: event for event in dataset.events}
         self.amendment_engine = EvidenceAmendmentEngine(dataset)
+        amendments_by_user: dict[str, list[EvidenceAmendment]] = defaultdict(list)
+        for amendment in self.amendment_engine.inspect().amendments:
+            amendments_by_user[self.events_by_id[amendment.affected_event_id].user_id].append(amendment)
+        self.amendments_by_user = {user_id: tuple(amendments) for user_id, amendments in amendments_by_user.items()}
         self.superseded_duplicate_ids: set[str] = set()
         for later in dataset.events:
             if not later.linked_event_id:
@@ -141,7 +145,7 @@ class CashFlowNormalizer:
             if interval is None:
                 continue
             source = events[-1]
-            amendments = [item for item in self.amendment_engine.for_user(request.user_id) if item.affected_event_id == source.event_id]
+            amendments = [item for item in self.amendments_by_user.get(request.user_id, ()) if item.affected_event_id == source.event_id]
             next_date = (self._cash_date(source) or request.request_date) + timedelta(days=interval)
             while next_date <= end_date:
                 if next_date >= request.request_date and source.event_id not in direct_event_ids:
