@@ -92,7 +92,7 @@ class BaselineAffordabilityTests(unittest.TestCase):
         history = tuple(make_event(f"salary-{month}", "100", "credit", date(2025, month, 1), description="salary", category="salary") for month in (10, 11, 12))
         message = Message("m", "u", None, None, datetime(2026, 1, 2, tzinfo=timezone.utc), "employer", "Your monthly salary has increased to USD 200. The change applies from 2026-01-15.")
         result = calculate(make_dataset("50", "0", history, amount="200", messages=(message,)))
-        self.assertEqual(date(2026, 1, 30), result.earliest_date_for_full_payment)
+        self.assertEqual(date(2026, 2, 1), result.earliest_date_for_full_payment)
 
     def test_recurring_expense_can_reduce_safe_today_capacity(self) -> None:
         bills = tuple(make_event(f"bill-{month}", "20", "debit", date(2025, month, 1), description="rent") for month in (10, 11, 12))

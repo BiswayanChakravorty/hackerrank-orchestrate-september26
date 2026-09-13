@@ -74,6 +74,19 @@ class BaselineSimulatorTests(unittest.TestCase):
         self.assertEqual(len(dates), len(set(dates)))
         self.assertTrue(all(flow.is_recurring for flow in result.normalized_cash_flows))
 
+    def test_monthly_recurrence_preserves_calendar_day_across_short_month(self) -> None:
+        historical = (
+            event("rent-1", "10", "debit", when=date(2025, 10, 31), description="rent"),
+            event("rent-2", "10", "debit", when=date(2025, 11, 30), description="rent"),
+            event("rent-3", "10", "debit", when=date(2025, 12, 31), description="rent"),
+        )
+        request_at_new_year = Request("request", "user", date(2026, 1, 1), "purchase", Decimal("1"), date(2026, 1, 1), False, "test")
+        result = BaselineSimulator(CashFlowNormalizer(dataset(historical))).simulate(request_at_new_year)
+        self.assertEqual(
+            [date(2026, 1, 31), date(2026, 2, 28), date(2026, 3, 31)],
+            [flow.flow_date for flow in result.normalized_cash_flows],
+        )
+
     def test_same_day_order_is_deterministic_and_exact_linked_duplicate_is_not_counted_twice(self) -> None:
         events = (
             event("old", "10", "debit"), event("new", "10", "debit", linked="old"),

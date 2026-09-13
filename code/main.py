@@ -55,12 +55,13 @@ def main() -> int:
             return 1
         print(f"Baseline affordability completed: {len(results)} requests; repeatability: passed")
     if args.generate_output:
-        planner = DeterministicPlanner(dataset, BaselineSimulator(CashFlowNormalizer(dataset)))
+        simulator = BaselineSimulator(CashFlowNormalizer(dataset))
+        planner = DeterministicPlanner(dataset, simulator)
         rows = [planner.decide(request) for request in dataset.requests]
         output_path = Path(__file__).resolve().parents[1] / "output.csv"
-        write_output(output_path, rows, dataset.output_template_request_ids)
+        write_output(output_path, rows, dataset.output_template_request_ids, dataset=dataset, simulator=simulator)
         first = output_path.read_bytes()
-        write_output(output_path, [planner.decide(request) for request in dataset.requests], dataset.output_template_request_ids)
+        write_output(output_path, [planner.decide(request) for request in dataset.requests], dataset.output_template_request_ids, dataset=dataset, simulator=simulator)
         if output_path.read_bytes() != first:
             print("Output generation is not repeatable.", file=sys.stderr); return 1
         print(f"Output generated and validated: {output_path} ({len(rows)} rows; repeatability: passed)")

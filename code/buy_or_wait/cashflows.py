@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
+import calendar
 from datetime import date, timedelta
 from decimal import Decimal
 from statistics import median
@@ -132,11 +133,6 @@ class CashFlowNormalizer:
                 continue
             if event.status != "settled" or event.direction == "non_cash":
                 continue
-            # A future inferred foreign-currency occurrence has no supplied
-            # settlement-date rate unless that exact future date exists in the
-            # fixed FX table. Do not fabricate either a rate or a recurrence.
-            if event.currency != profile.home_currency:
-                continue
             groups[(event.event_type, event.description, event.category, event.direction, event.currency, event.amount)].append(event)
         sequence = sequence_start
         for events in groups.values():
@@ -146,9 +142,20 @@ class CashFlowNormalizer:
                 continue
             source = events[-1]
             amendments = [item for item in self.amendments_by_user.get(request.user_id, ()) if item.affected_event_id == source.event_id]
-            next_date = (self._cash_date(source) or request.request_date) + timedelta(days=interval)
+            monthly = 27 <= interval <= 32
+            anchor_day = (self._cash_date(source) or request.request_date).day
+            next_date = self._next_recurrence_date(
+                self._cash_date(source) or request.request_date, interval, monthly, anchor_day
+            )
             while next_date <= end_date:
                 if next_date >= request.request_date and source.event_id not in direct_event_ids:
+                    # Never invent a future conversion.  A recurrence can be
+                    # evidenced independently of its FX rate, but it is not a
+                    # usable home-currency cash flow on a date without the
+                    # supplied directional rate.
+                    if (source.currency != profile.home_currency and
+                            (next_date, source.currency, profile.home_currency) not in self.rates):
+                        break
                     flow = self._event_to_flow(source, profile, next_date, sequence=sequence, is_recurring=True)
                     if flow is not None:
                         applicable = [item for item in amendments if item.effective_date <= next_date]
@@ -157,8 +164,25 @@ class CashFlowNormalizer:
                             flow = CashFlow(flow.flow_date, amendment.new_amount or flow.amount, flow.currency, flow.direction, flow.source_event_id, flow.description, flow.is_recurring, True, flow.original_currency, flow.conversion_rate, flow.sequence)
                         result.append(flow)
                         sequence += 1
-                next_date += timedelta(days=interval)
+                next_date = self._next_recurrence_date(next_date, interval, monthly, anchor_day)
         return result
+
+    @staticmethod
+    def _next_recurrence_date(current: date, interval: int, monthly: bool, anchor_day: int) -> date:
+        """Advance a monthly series by calendar month, not an arbitrary day gap.
+
+        The detector permits 27--32-day gaps because month lengths differ.  Once
+        that cadence is established, repeatedly adding its median gap drifts a
+        payment anchored on (for example) the 15th.  Weekly and biweekly series
+        retain their evidenced fixed-day interval.  Foreign-currency series are
+        allowed here as well, but ``_event_to_flow`` still fails closed unless an
+        exact supplied FX rate exists for every projected occurrence.
+        """
+        if not monthly:
+            return current + timedelta(days=interval)
+        year = current.year + (current.month == 12)
+        month = 1 if current.month == 12 else current.month + 1
+        return date(year, month, min(anchor_day, calendar.monthrange(year, month)[1]))
 
     @staticmethod
     def _established_interval(events: list[Event]) -> int | None:
