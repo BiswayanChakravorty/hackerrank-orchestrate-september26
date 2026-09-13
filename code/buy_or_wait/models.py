@@ -105,3 +105,40 @@ class CashFlow:
     direction: Direction
     source_event_id: str | None
     description: str
+    is_recurring: bool = False
+    is_message_amendment: bool = False
+    original_currency: Currency | None = None
+    conversion_rate: Decimal | None = None
+    sequence: int = 0
+
+
+@dataclass(frozen=True)
+class MessageAmendment:
+    """A narrow, deterministic interpretation of supporting message evidence."""
+
+    message_id: str
+    related_event_id: str | None
+    kind: str
+    details: str
+
+
+@dataclass(frozen=True)
+class EvidenceAmendment:
+    amendment_id: str
+    amendment_type: str
+    source_message_id: str
+    affected_event_id: str
+    effective_date: date
+    old_amount: Decimal | None
+    new_amount: Decimal | None
+    old_status: EventStatus | None
+    new_status: EventStatus | None
+    explanation: str
+
+
+@dataclass(frozen=True)
+class BaselineAffordabilityResult:
+    """Financial capacity before payment preferences or spending changes."""
+
+    amount_safe_to_pay: Decimal
+    earliest_date_for_full_payment: date | None
